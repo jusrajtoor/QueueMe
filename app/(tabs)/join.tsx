@@ -107,12 +107,6 @@ export default function JoinQueueScreen() {
               />
             </View>
             
-            <TouchableOpacity style={styles.qrButton}>
-              <View style={styles.qrButtonContent}>
-                <QrCode size={20} color="#3B82F6" />
-                <Text style={styles.qrButtonText}>Scan QR Code</Text>
-              </View>
-            </TouchableOpacity>
             
             <Text style={styles.infoText}>
               Enter the queue code provided by the business or service you're visiting.
