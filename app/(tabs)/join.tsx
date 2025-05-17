@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,85 +10,77 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, QrCode, Ticket } from 'lucide-react-native';
+import { ArrowLeft, Ticket } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function JoinQueueScreen() {
+  const { user } = useAuth();
   const { queues, joinQueue } = useQueueContext();
-  
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user) router.replace('/login');
+  }, [user]);
+
+  if (!user) return null;
+
   const [queueCode, setQueueCode] = useState('');
-  const [userName, setUserName] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
   const [step, setStep] = useState(1);
   const [selectedQueue, setSelectedQueue] = useState<string | null>(null);
-  
+
   const handleFindQueue = () => {
     if (!queueCode.trim()) {
       Alert.alert('Missing Information', 'Please enter a queue code.');
       return;
     }
-    
+
     const queue = queues.find(q => q.id === queueCode.trim() && q.isActive);
-    
+
     if (!queue) {
       Alert.alert('Queue Not Found', 'Please check the code and try again.');
       return;
     }
-    
+
     setSelectedQueue(queue.id);
     setStep(2);
   };
-  
+
   const handleJoinQueue = () => {
-    if (!userName.trim()) {
-      Alert.alert('Missing Information', 'Please enter your name.');
-      return;
-    }
-    
-    if (!selectedQueue) return;
-    
-    const success = joinQueue(selectedQueue, userName.trim(), contactInfo.trim() || undefined);
-    
+    if (!selectedQueue || !user) return;
+
+    const success = joinQueue(selectedQueue, user.name, user.phone);
+
     if (success) {
       router.push('/(tabs)/status');
     } else {
       Alert.alert('Error', 'Could not join the queue. This may be because the queue is no longer active or you may already be in this queue.');
     }
   };
-  
+
   const selectedQueueData = selectedQueue ? queues.find(q => q.id === selectedQueue) : null;
-  
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <LinearGradient
-        colors={['#EFF6FF', '#F9FAFB']}
-        style={styles.background}
-      />
-      
+      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => step === 1 ? router.back() : setStep(1)}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => step === 1 ? router.back() : setStep(1)}>
           <ArrowLeft size={24} color="#3B82F6" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {step === 1 ? 'Join a Queue' : 'Enter Your Details'}
+          {step === 1 ? 'Join a Queue' : 'Confirm Joining'}
         </Text>
         <View style={{ width: 24 }} />
       </View>
-      
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {step === 1 ? (
           <View style={styles.formContainer}>
             <View style={styles.codeInputContainer}>
@@ -106,7 +98,6 @@ export default function JoinQueueScreen() {
                 autoCorrect={false}
               />
             </View>
-            
             <Text style={styles.infoText}>
               Enter the queue code provided by the business or service you're visiting.
             </Text>
@@ -129,45 +120,24 @@ export default function JoinQueueScreen() {
                 </Text>
               </View>
             </View>
-            
-            <Text style={styles.label}>Your Name*</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              value={userName}
-              onChangeText={setUserName}
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="words"
-            />
-            
-            <Text style={styles.label}>Contact Info (optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Mobile number"
-              value={contactInfo}
-              onChangeText={setContactInfo}
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-            />
+
+            <View>
+              <Text style={styles.label}>You are joining as:</Text>
+              <Text style={styles.confirmText}>{user.name} ({user.phone})</Text>
+            </View>
           </View>
         )}
       </ScrollView>
-      
+
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={step === 1 ? handleFindQueue : handleJoinQueue}
-          activeOpacity={0.9}
-        >
+        <TouchableOpacity style={styles.actionButton} onPress={step === 1 ? handleFindQueue : handleJoinQueue} activeOpacity={0.9}>
           <LinearGradient
             colors={step === 1 ? ['#3B82F6', '#2563EB'] : ['#10B981', '#059669']}
             style={styles.buttonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.buttonText}>
-              {step === 1 ? 'Find Queue' : 'Join Queue'}
-            </Text>
+            <Text style={styles.buttonText}>{step === 1 ? 'Find Queue' : 'Join Queue'}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -293,14 +263,10 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 16,
+  confirmText: {
     fontSize: 16,
-    color: '#1E293B',
+    fontWeight: '500',
+    color: '#334155',
     marginBottom: 20,
   },
   footer: {

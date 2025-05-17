@@ -16,7 +16,7 @@ export default function LoginScreen() {
       Alert.alert('Missing Info', 'Please enter both name and phone number.');
       return;
     }
-    login(name.trim(), phone.trim());
+    login({ name: name.trim(), phone: phone.trim() });
     router.replace('/join');
   };
 
