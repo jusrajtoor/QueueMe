@@ -88,7 +88,7 @@ export default function CreateQueueScreen() {
           <View style={styles.infoBox}>
             <Info size={18} color="#64748B" style={styles.infoIcon} />
             <Text style={styles.infoText}>
-              Your queue will be available via a QR code or unique code that others can use to join.
+              Your queue will be available via a unique code that others can use to join.
             </Text>
           </View>
         </View>
