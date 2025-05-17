@@ -1,5 +1,11 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, UserPlus, ListPlus, ChartBar as BarChart4 } from 'lucide-react-native';
+import {
+  Chrome as Home,
+  UserPlus,
+  ListPlus,
+  ChartBar as BarChart4,
+  UserCircle,
+} from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -10,44 +16,51 @@ export default function TabLayout() {
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: '#E2E8F0',
-          backgroundColor: '#FFFFFF'
+          backgroundColor: '#FFFFFF',
         },
         tabBarItemStyle: {
-          paddingVertical: 5
+          paddingVertical: 5,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500'
+          fontWeight: '500',
         },
-        headerShown: false
+        headerShown: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
           title: 'Create',
-          tabBarIcon: ({ color, size }) => <ListPlus size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <ListPlus size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="join"
         options={{
           title: 'Join',
-          tabBarIcon: ({ color, size }) => <UserPlus size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <UserPlus size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="manage"
         options={{
           title: 'Manage',
-          tabBarIcon: ({ color, size }) => <BarChart4 size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <BarChart4 size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <UserCircle size={size} color={color} />,
         }}
       />
     </Tabs>
