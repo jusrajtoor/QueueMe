@@ -107,13 +107,6 @@ export default function JoinQueueScreen() {
               />
             </View>
             
-            <TouchableOpacity style={styles.qrButton}>
-              <View style={styles.qrButtonContent}>
-                <QrCode size={20} color="#3B82F6" />
-                <Text style={styles.qrButtonText}>Scan QR Code</Text>
-              </View>
-            </TouchableOpacity>
-            
             <Text style={styles.infoText}>
               Enter the queue code provided by the business or service you're visiting.
             </Text>
@@ -150,11 +143,10 @@ export default function JoinQueueScreen() {
             <Text style={styles.label}>Contact Info (optional)</Text>
             <TextInput
               style={styles.input}
-              placeholder="Phone or email"
+              placeholder="Mobile number"
               value={contactInfo}
               onChangeText={setContactInfo}
               placeholderTextColor="#94A3B8"
-              keyboardType="email-address"
               autoCapitalize="none"
             />
           </View>
@@ -251,23 +243,6 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     color: '#1E293B',
-  },
-  qrButton: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  qrButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrButtonText: {
-    color: '#3B82F6',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 10,
   },
   infoText: {
     fontSize: 14,

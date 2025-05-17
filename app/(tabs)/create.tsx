@@ -21,9 +21,6 @@ export default function CreateQueueScreen() {
   
   const [queueName, setQueueName] = useState('');
   const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [timePerPerson, setTimePerPerson] = useState('5');
-  const [useLocation, setUseLocation] = useState(false);
   
   const handleCreateQueue = () => {
     if (!queueName.trim()) {
@@ -34,8 +31,6 @@ export default function CreateQueueScreen() {
     const queue = createQueue({
       name: queueName.trim(),
       description: description.trim(),
-      location: useLocation ? location.trim() : undefined,
-      timePerPerson: parseInt(timePerPerson) || 5,
     });
     
     router.push('/(tabs)/manage');
@@ -89,46 +84,6 @@ export default function CreateQueueScreen() {
             multiline
             numberOfLines={3}
           />
-          
-          <View style={styles.optionRow}>
-            <View style={styles.iconContainer}>
-              <Clock size={20} color="#3B82F6" />
-            </View>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionLabel}>Time Per Person (minutes)</Text>
-              <TextInput
-                style={styles.smallInput}
-                value={timePerPerson}
-                onChangeText={setTimePerPerson}
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
-          
-          <View style={styles.optionRow}>
-            <View style={styles.iconContainer}>
-              <MapPin size={20} color="#3B82F6" />
-            </View>
-            <View style={styles.optionContent}>
-              <Text style={styles.optionLabel}>Include Location</Text>
-              <Switch
-                value={useLocation}
-                onValueChange={setUseLocation}
-                trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
-                thumbColor={useLocation ? '#3B82F6' : '#F9FAFB'}
-              />
-            </View>
-          </View>
-          
-          {useLocation && (
-            <TextInput
-              style={[styles.input, { marginTop: 10 }]}
-              placeholder="Enter location"
-              value={location}
-              onChangeText={setLocation}
-              placeholderTextColor="#94A3B8"
-            />
-          )}
           
           <View style={styles.infoBox}>
             <Info size={18} color="#64748B" style={styles.infoIcon} />
