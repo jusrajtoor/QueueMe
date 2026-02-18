@@ -18,10 +18,11 @@
 
 ## 4. Auth settings
 1. In `Authentication -> Providers`, keep Email enabled.
-2. Optional: disable email confirmation for local testing.
+2. Optional for local testing: disable email confirmation.
 
 ## 5. Realtime settings
-1. In `Database -> Replication`, enable realtime for:
+1. In `Database -> Publications`, open `supabase_realtime`.
+2. Enable these tables:
    - `public.queues`
    - `public.queue_members`
 
@@ -31,4 +32,4 @@ npm install
 npm run dev
 ```
 
-Sign up/login in-app, then create and join queues from different devices. Data is shared through Supabase.
+Sign up/login in-app, choose your role (customer or business), and update your profile name/photo.

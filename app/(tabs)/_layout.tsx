@@ -1,15 +1,15 @@
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
-import { Chrome as Home, UserPlus, ListPlus, ChartBar as BarChart4 } from 'lucide-react-native';
+import { ChartBar as BarChart4, Chrome as Home, User, Clock3 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
-  const { user, isLoading } = useAuth();
+  const { user, profile, isLoading, isProfileLoading } = useAuth();
 
-  if (isLoading) {
+  if (isLoading || (user && isProfileLoading)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#1D4ED8" />
       </View>
     );
   }
@@ -18,22 +18,24 @@ export default function TabLayout() {
     return <Redirect href="/auth" />;
   }
 
+  const role = profile?.role ?? 'customer';
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarActiveTintColor: '#1D4ED8',
+        tabBarInactiveTintColor: '#64748B',
         tabBarStyle: {
           borderTopWidth: 1,
           borderTopColor: '#E2E8F0',
           backgroundColor: '#FFFFFF',
-        },
-        tabBarItemStyle: {
-          paddingVertical: 5,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500',
+          fontWeight: '600',
         },
         headerShown: false,
       }}
@@ -45,25 +47,45 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
+
       <Tabs.Screen
-        name="create"
+        name="status"
         options={{
-          title: 'Create',
-          tabBarIcon: ({ color, size }) => <ListPlus size={size} color={color} />,
+          href: role === 'customer' ? '/(tabs)/status' : null,
+          title: 'Status',
+          tabBarIcon: ({ color, size }) => <Clock3 size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="join"
-        options={{
-          title: 'Join',
-          tabBarIcon: ({ color, size }) => <UserPlus size={size} color={color} />,
-        }}
-      />
+
       <Tabs.Screen
         name="manage"
         options={{
+          href: role === 'business' ? '/(tabs)/manage' : null,
           title: 'Manage',
           tabBarIcon: ({ color, size }) => <BarChart4 size={size} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="create"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="join"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          href: null,
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />
     </Tabs>

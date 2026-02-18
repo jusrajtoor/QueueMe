@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,9 +14,11 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, QrCode, Ticket } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function JoinQueueScreen() {
   const { queues, joinQueue, isLoading } = useQueueContext();
+  const { profile } = useAuth();
 
   const [queueCode, setQueueCode] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -24,6 +26,29 @@ export default function JoinQueueScreen() {
   const [step, setStep] = useState(1);
   const [selectedQueue, setSelectedQueue] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!displayName && profile?.fullName) {
+      setDisplayName(profile.fullName);
+    }
+  }, [profile?.fullName, displayName]);
+
+  if (profile?.role === 'business') {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
+        <View style={styles.modeBlockCard}>
+          <Text style={styles.modeBlockTitle}>Business mode is active</Text>
+          <Text style={styles.modeBlockText}>
+            Join flow is for customers. Switch your role in Profile to customer when you want to join queues.
+          </Text>
+          <TouchableOpacity style={styles.modeBlockButton} onPress={() => router.push('/(tabs)/profile' as never)}>
+            <Text style={styles.modeBlockButtonText}>Open Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   const handleFindQueue = () => {
     if (!queueCode.trim()) {
@@ -44,7 +69,7 @@ export default function JoinQueueScreen() {
 
   const handleJoinQueue = async () => {
     if (!displayName.trim()) {
-      Alert.alert('Missing Information', 'Please enter your name.');
+      Alert.alert('Missing Information', 'Please add your name in profile or enter it here.');
       return;
     }
 
@@ -53,9 +78,7 @@ export default function JoinQueueScreen() {
     }
 
     setIsSubmitting(true);
-
     const result = await joinQueue(selectedQueue, displayName.trim(), contactInfo.trim() || undefined);
-
     setIsSubmitting(false);
 
     if (result.success) {
@@ -74,17 +97,17 @@ export default function JoinQueueScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+      <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
 
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => (step === 1 ? router.back() : setStep(1))}
         >
-          <ArrowLeft size={24} color="#3B82F6" />
+          <ArrowLeft size={22} color="#1D4ED8" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{step === 1 ? 'Join a Queue' : 'Enter Your Details'}</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>{step === 1 ? 'Join Queue' : 'Your Details'}</Text>
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView
@@ -96,12 +119,12 @@ export default function JoinQueueScreen() {
           <View style={styles.formContainer}>
             <View style={styles.codeInputContainer}>
               <View style={styles.codeInputHeader}>
-                <Ticket size={20} color="#3B82F6" />
+                <Ticket size={20} color="#1D4ED8" />
                 <Text style={styles.codeInputLabel}>Queue Code</Text>
               </View>
               <TextInput
                 style={styles.codeInput}
-                placeholder="Enter the queue code"
+                placeholder="Enter queue code"
                 value={queueCode}
                 onChangeText={(value) => setQueueCode(value.toUpperCase())}
                 placeholderTextColor="#94A3B8"
@@ -112,14 +135,12 @@ export default function JoinQueueScreen() {
 
             <TouchableOpacity style={styles.qrButton} disabled>
               <View style={styles.qrButtonContent}>
-                <QrCode size={20} color="#3B82F6" />
-                <Text style={styles.qrButtonText}>Scan QR Code (Coming Soon)</Text>
+                <QrCode size={20} color="#1D4ED8" />
+                <Text style={styles.qrButtonText}>Scan QR (coming soon)</Text>
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.infoText}>
-              Enter the queue code provided by the business or service you are visiting.
-            </Text>
+            <Text style={styles.infoText}>Use the code shared by the business to find your queue.</Text>
             {isLoading ? <Text style={styles.infoText}>Refreshing queue data...</Text> : null}
           </View>
         ) : (
@@ -173,10 +194,8 @@ export default function JoinQueueScreen() {
           disabled={isSubmitting}
         >
           <LinearGradient
-            colors={step === 1 ? ['#3B82F6', '#2563EB'] : ['#10B981', '#059669']}
+            colors={step === 1 ? ['#1D4ED8', '#2563EB'] : ['#059669', '#10B981']}
             style={styles.buttonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
           >
             <Text style={styles.buttonText}>
               {isSubmitting ? 'Joining...' : step === 1 ? 'Find Queue' : 'Join Queue'}
@@ -189,17 +208,8 @@ export default function JoinQueueScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  background: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -209,119 +219,63 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  formContainer: {
-    marginTop: 20,
-  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 30 },
+  formContainer: { marginTop: 8 },
   codeInputContainer: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    marginBottom: 20,
+    borderColor: '#D9E2EC',
+    borderRadius: 14,
+    marginBottom: 16,
     overflow: 'hidden',
   },
   codeInputHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  codeInputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginLeft: 12,
-  },
-  codeInput: {
-    padding: 16,
-    fontSize: 16,
-    color: '#1E293B',
-  },
-  qrButton: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  qrButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrButtonText: {
-    color: '#3B82F6',
-    fontWeight: '600',
-    marginLeft: 10,
-  },
-  infoText: {
-    color: '#64748B',
-    lineHeight: 20,
-  },
+  codeInputLabel: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginLeft: 10 },
+  codeInput: { padding: 14, fontSize: 16, color: '#1E293B' },
+  qrButton: { backgroundColor: '#DBEAFE', borderRadius: 12, padding: 14, marginBottom: 14 },
+  qrButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  qrButtonText: { color: '#1D4ED8', fontWeight: '700', marginLeft: 8 },
+  infoText: { color: '#475569', lineHeight: 20 },
   queueInfoCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderColor: '#D9E2EC',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
   },
-  queueName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 6,
-  },
-  queueDescription: {
-    color: '#64748B',
-    marginBottom: 12,
-  },
-  queueDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  queueDetailLabel: {
-    color: '#64748B',
-  },
-  queueDetailValue: {
-    color: '#1E293B',
-    fontWeight: '600',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
+  queueName: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+  queueDescription: { color: '#64748B', marginBottom: 8 },
+  queueDetailRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  queueDetailLabel: { color: '#64748B' },
+  queueDetailValue: { color: '#0F172A', fontWeight: '700' },
+  label: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     fontSize: 16,
     color: '#1E293B',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   footer: {
     padding: 20,
@@ -329,19 +283,27 @@ const styles = StyleSheet.create({
     borderTopColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
   },
-  actionButton: {
-    height: 56,
-    borderRadius: 12,
-    overflow: 'hidden',
+  actionButton: { height: 54, borderRadius: 12, overflow: 'hidden' },
+  buttonGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  modeBlockCard: {
+    marginTop: 140,
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 18,
   },
-  buttonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  modeBlockTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  modeBlockText: { marginTop: 8, color: '#475569', lineHeight: 21 },
+  modeBlockButton: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  modeBlockButtonText: { color: '#1D4ED8', fontWeight: '700' },
 });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -90,17 +91,42 @@ export default function ManageQueueScreen() {
     ]);
   };
 
+  const executeEndQueue = async () => {
+    setIsMutating(true);
+    const result = await endQueue(activeHostQueue.id);
+    setIsMutating(false);
+
+    if (!result.success) {
+      Alert.alert('Could Not End Queue', result.message ?? 'Please try again.');
+      return;
+    }
+
+    Alert.alert('Queue Ended', 'Your queue has been closed successfully.');
+    router.replace('/(tabs)');
+  };
+
   const handleEndQueue = () => {
-    Alert.alert('End Queue', 'Are you sure you want to end this queue? This cannot be undone.', [
+    const confirmationMessage = 'Are you sure you want to end this queue? This cannot be undone.';
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (message?: string) => boolean }).confirm;
+      const confirmed = confirmFn ? confirmFn(confirmationMessage) : true;
+
+      if (!confirmed) {
+        return;
+      }
+
+      void executeEndQueue();
+      return;
+    }
+
+    Alert.alert('End Queue', confirmationMessage, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'End Queue',
         style: 'destructive',
-        onPress: async () => {
-          setIsMutating(true);
-          await endQueue(activeHostQueue.id);
-          setIsMutating(false);
-          router.replace('/(tabs)/create');
+        onPress: () => {
+          void executeEndQueue();
         },
       },
     ]);
@@ -173,7 +199,11 @@ export default function ManageQueueScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.endQueueButton} onPress={handleEndQueue}>
+        <TouchableOpacity
+          style={[styles.endQueueButton, isMutating && { opacity: 0.6 }]}
+          onPress={handleEndQueue}
+          disabled={isMutating}
+        >
           <Text style={styles.endQueueText}>End Queue</Text>
         </TouchableOpacity>
       </View>

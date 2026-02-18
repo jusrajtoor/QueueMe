@@ -15,9 +15,11 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Clock, MapPin, Info } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CreateQueueScreen() {
   const { createQueue } = useQueueContext();
+  const { profile } = useAuth();
 
   const [queueName, setQueueName] = useState('');
   const [description, setDescription] = useState('');
@@ -25,6 +27,23 @@ export default function CreateQueueScreen() {
   const [timePerPerson, setTimePerPerson] = useState('5');
   const [useLocation, setUseLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (profile?.role === 'customer') {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
+        <View style={styles.modeBlockCard}>
+          <Text style={styles.modeBlockTitle}>Customer mode is active</Text>
+          <Text style={styles.modeBlockText}>
+            Queue creation is available for business accounts. Switch your role in Profile to business.
+          </Text>
+          <TouchableOpacity style={styles.modeBlockButton} onPress={() => router.push('/(tabs)/profile' as never)}>
+            <Text style={styles.modeBlockButtonText}>Open Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   const handleCreateQueue = async () => {
     if (!queueName.trim()) {
@@ -57,14 +76,14 @@ export default function CreateQueueScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+      <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#3B82F6" />
+          <ArrowLeft size={22} color="#1D4ED8" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Queue</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -96,7 +115,7 @@ export default function CreateQueueScreen() {
 
           <View style={styles.optionRow}>
             <View style={styles.iconContainer}>
-              <Clock size={20} color="#3B82F6" />
+              <Clock size={20} color="#1D4ED8" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionLabel}>Time Per Person (minutes)</Text>
@@ -111,7 +130,7 @@ export default function CreateQueueScreen() {
 
           <View style={styles.optionRow}>
             <View style={styles.iconContainer}>
-              <MapPin size={20} color="#3B82F6" />
+              <MapPin size={20} color="#1D4ED8" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionLabel}>Include Location</Text>
@@ -119,12 +138,12 @@ export default function CreateQueueScreen() {
                 value={useLocation}
                 onValueChange={setUseLocation}
                 trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
-                thumbColor={useLocation ? '#3B82F6' : '#F9FAFB'}
+                thumbColor={useLocation ? '#1D4ED8' : '#F9FAFB'}
               />
             </View>
           </View>
 
-          {useLocation && (
+          {useLocation ? (
             <TextInput
               style={[styles.input, { marginTop: 10 }]}
               placeholder="Enter location"
@@ -132,13 +151,11 @@ export default function CreateQueueScreen() {
               onChangeText={setLocation}
               placeholderTextColor="#94A3B8"
             />
-          )}
+          ) : null}
 
           <View style={styles.infoBox}>
-            <Info size={18} color="#64748B" style={styles.infoIcon} />
-            <Text style={styles.infoText}>
-              This queue will be stored in the backend and available across all devices.
-            </Text>
+            <Info size={18} color="#475569" style={styles.infoIcon} />
+            <Text style={styles.infoText}>Your queue will sync instantly for all joined customers.</Text>
           </View>
         </View>
       </ScrollView>
@@ -150,12 +167,7 @@ export default function CreateQueueScreen() {
           activeOpacity={0.9}
           disabled={isSubmitting}
         >
-          <LinearGradient
-            colors={['#3B82F6', '#2563EB']}
-            style={styles.buttonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          <LinearGradient colors={['#1D4ED8', '#2563EB']} style={styles.buttonGradient}>
             <Text style={styles.buttonText}>{isSubmitting ? 'Creating...' : 'Create Queue'}</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -165,17 +177,8 @@ export default function CreateQueueScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  background: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -185,66 +188,49 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  formContainer: {
-    marginTop: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 30 },
+  formContainer: { marginTop: 8 },
+  label: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     fontSize: 16,
     color: '#1E293B',
-    marginBottom: 20,
+    marginBottom: 14,
   },
-  multilineInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
+  multilineInput: { height: 100, textAlignVertical: 'top' },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#D9E2EC',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    padding: 14,
+    marginBottom: 12,
   },
   iconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   optionContent: {
     flex: 1,
@@ -252,55 +238,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  optionLabel: {
-    fontSize: 16,
-    color: '#1E293B',
-    fontWeight: '500',
-  },
+  optionLabel: { fontSize: 15, color: '#1E293B', fontWeight: '600' },
   smallInput: {
     backgroundColor: '#F1F5F9',
     borderRadius: 8,
     padding: 8,
-    width: 60,
+    width: 58,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 15,
     color: '#1E293B',
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E2E8F0',
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     marginTop: 8,
   },
-  infoIcon: {
-    marginTop: 2,
-    marginRight: 12,
-  },
-  infoText: {
-    flex: 1,
-    color: '#64748B',
-    lineHeight: 20,
-  },
+  infoIcon: { marginTop: 2, marginRight: 10 },
+  infoText: { flex: 1, color: '#475569', lineHeight: 20 },
   footer: {
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
   },
-  createButton: {
-    height: 56,
-    borderRadius: 12,
-    overflow: 'hidden',
+  createButton: { height: 54, borderRadius: 12, overflow: 'hidden' },
+  buttonGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  modeBlockCard: {
+    marginTop: 140,
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 18,
   },
-  buttonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  modeBlockTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  modeBlockText: { marginTop: 8, color: '#475569', lineHeight: 21 },
+  modeBlockButton: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  modeBlockButtonText: { color: '#1D4ED8', fontWeight: '700' },
 });

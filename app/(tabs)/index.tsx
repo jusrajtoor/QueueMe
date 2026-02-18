@@ -1,23 +1,34 @@
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ListPlus, UserPlus, LogOut } from 'lucide-react-native';
+import { Building2, CirclePlay, UserPlus } from 'lucide-react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useAuth } from '@/context/AuthContext';
+import { getDisplayName, getInitials } from '@/utils/profileUtils';
+import { ProfileMenu } from '@/components/ProfileMenu';
 
 export default function HomeScreen() {
   useFrameworkReady();
-  const { user, signOut } = useAuth();
 
-  const navigateToCreate = () => {
-    router.push('/(tabs)/create');
+  const { user, profile, signOut } = useAuth();
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const displayName = useMemo(() => getDisplayName(profile, user?.email), [profile, user?.email]);
+  const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const isBusiness = profile?.role === 'business';
+
+  const handlePrimaryAction = () => {
+    router.push(isBusiness ? '/(tabs)/create' : '/(tabs)/join');
   };
 
-  const navigateToJoin = () => {
-    router.push('/(tabs)/join');
+  const handleSecondaryAction = () => {
+    router.push(isBusiness ? '/(tabs)/manage' : '/(tabs)/status');
   };
 
   const handleLogout = async () => {
+    setMenuVisible(false);
+
     const result = await signOut();
 
     if (result.error) {
@@ -28,56 +39,63 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+      <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
 
       <View style={styles.topBar}>
-        <Text style={styles.userEmail}>{user?.email}</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut color="#1E3A8A" size={18} />
-          <Text style={styles.logoutText}>Log out</Text>
+        <View>
+          <Text style={styles.greetingLabel}>Welcome back</Text>
+          <Text style={styles.greetingName}>{displayName}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.profileButton} onPress={() => setMenuVisible(true)}>
+          {profile?.avatarUrl ? (
+            <Image source={{ uri: profile.avatarUrl }} style={styles.profileImage} />
+          ) : (
+            <Text style={styles.profileInitials}>{initials}</Text>
+          )}
         </TouchableOpacity>
       </View>
 
-      <View style={styles.logoContainer}>
-        <Text style={styles.logoText}>QueueMe</Text>
-        <Text style={styles.tagline}>Skip the line, not the experience</Text>
+      <View style={styles.logoSection}>
+        <Image source={require('../../QueueMe.png')} style={styles.logoImage} resizeMode="contain" />
+        <Text style={styles.tagline}>Fast queues. Better flow. No crowding.</Text>
       </View>
 
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.button} onPress={navigateToCreate} activeOpacity={0.9}>
-          <LinearGradient
-            colors={['#3B82F6', '#2563EB']}
-            style={styles.buttonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.buttonContent}>
-              <ListPlus color="#FFFFFF" size={30} />
-              <Text style={styles.buttonText}>Make a Queue</Text>
-              <Text style={styles.buttonSubText}>For businesses & hosts</Text>
-            </View>
+      <View style={styles.roleCard}>
+        <View style={styles.roleBadge}>
+          {isBusiness ? <Building2 color="#1D4ED8" size={18} /> : <UserPlus color="#1D4ED8" size={18} />}
+          <Text style={styles.roleBadgeText}>{isBusiness ? 'Business Mode' : 'Customer Mode'}</Text>
+        </View>
+
+        <Text style={styles.roleDescription}>
+          {isBusiness
+            ? 'Create queue codes for your visitors and manage the live line from one dashboard.'
+            : 'Join a queue with a code and track your position in real time.'}
+        </Text>
+
+        <TouchableOpacity style={styles.primaryAction} onPress={handlePrimaryAction} activeOpacity={0.92}>
+          <LinearGradient colors={['#1D4ED8', '#2563EB']} style={styles.primaryActionGradient}>
+            <Text style={styles.primaryActionText}>{isBusiness ? 'Create a Queue' : 'Join a Queue'}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button} onPress={navigateToJoin} activeOpacity={0.9}>
-          <LinearGradient
-            colors={['#10B981', '#059669']}
-            style={styles.buttonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.buttonContent}>
-              <UserPlus color="#FFFFFF" size={30} />
-              <Text style={styles.buttonText}>Join a Queue</Text>
-              <Text style={styles.buttonSubText}>For customers & guests</Text>
-            </View>
-          </LinearGradient>
+        <TouchableOpacity style={styles.secondaryAction} onPress={handleSecondaryAction}>
+          <CirclePlay size={17} color="#1D4ED8" />
+          <Text style={styles.secondaryActionText}>{isBusiness ? 'Open Manage View' : 'Open Queue Status'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Your queues and membership sync across devices.</Text>
-      </View>
+      <ProfileMenu
+        visible={menuVisible}
+        profile={profile}
+        email={user?.email}
+        onClose={() => setMenuVisible(false)}
+        onOpenProfile={() => {
+          setMenuVisible(false);
+          router.push('/(tabs)/profile' as never);
+        }}
+        onLogout={handleLogout}
+      />
     </View>
   );
 }
@@ -85,7 +103,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 20,
   },
   background: {
     position: 'absolute',
@@ -96,89 +115,111 @@ const styles = StyleSheet.create({
   },
   topBar: {
     marginTop: 56,
-    paddingHorizontal: 20,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  userEmail: {
+  greetingLabel: {
     color: '#475569',
     fontSize: 13,
-    maxWidth: '65%',
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#E2E8F0',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  logoutText: {
-    color: '#1E3A8A',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 40,
-  },
-  logoText: {
-    fontSize: 40,
+  greetingName: {
+    color: '#0F172A',
+    fontSize: 20,
     fontWeight: '700',
-    color: '#1E3A8A',
-    marginBottom: 8,
+    marginTop: 2,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1D4ED8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  profileInitials: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  logoSection: {
+    marginTop: 22,
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 230,
+    height: 82,
   },
   tagline: {
-    fontSize: 16,
-    color: '#64748B',
+    marginTop: 6,
+    color: '#475569',
     textAlign: 'center',
+    fontSize: 15,
   },
-  buttonsContainer: {
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    flex: 1,
-  },
-  button: {
-    height: 130,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+  roleCard: {
+    marginTop: 30,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D9E2EC',
+    borderRadius: 18,
+    padding: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
     elevation: 5,
   },
-  buttonGradient: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 20,
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#DBEAFE',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  buttonContent: {
+  roleBadgeText: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+  },
+  roleDescription: {
+    marginTop: 14,
+    color: '#334155',
+    lineHeight: 21,
+    fontSize: 15,
+  },
+  primaryAction: {
+    marginTop: 18,
+    height: 56,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  primaryActionGradient: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 24,
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '700',
-    marginTop: 12,
   },
-  buttonSubText: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  footer: {
+  secondaryAction: {
+    marginTop: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
   },
-  footerText: {
-    color: '#64748B',
-    fontSize: 14,
-    textAlign: 'center',
+  secondaryActionText: {
+    color: '#1D4ED8',
+    fontWeight: '600',
   },
 });

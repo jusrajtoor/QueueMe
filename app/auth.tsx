@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -11,13 +12,14 @@ import {
 } from 'react-native';
 import { Redirect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, type UserRole } from '@/context/AuthContext';
 
 export default function AuthScreen() {
   const { user, isLoading, signIn, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole>('customer');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -30,8 +32,8 @@ export default function AuthScreen() {
     setIsSubmitting(true);
 
     const result = isSignUp
-      ? await signUp(email, password)
-      : await signIn(email, password);
+      ? await signUp(email, password, selectedRole)
+      : await signIn(email, password, selectedRole);
 
     setIsSubmitting(false);
 
@@ -50,11 +52,28 @@ export default function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+      <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
 
       <View style={styles.content}>
-        <Text style={styles.title}>QueueMe</Text>
-        <Text style={styles.subtitle}>Sign in to create and join shared queues across devices.</Text>
+        <View style={styles.logoContainer}>
+          <Image source={require('../QueueMe.png')} style={styles.logoImage} resizeMode="contain" />
+          <Text style={styles.subtitle}>Secure queueing for customers and businesses.</Text>
+        </View>
+
+        <View style={styles.roleSwitch}>
+          <TouchableOpacity
+            onPress={() => setSelectedRole('customer')}
+            style={[styles.roleButton, selectedRole === 'customer' && styles.roleButtonActive]}
+          >
+            <Text style={[styles.roleText, selectedRole === 'customer' && styles.roleTextActive]}>Customer</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setSelectedRole('business')}
+            style={[styles.roleButton, selectedRole === 'business' && styles.roleButtonActive]}
+          >
+            <Text style={[styles.roleText, selectedRole === 'business' && styles.roleTextActive]}>Business</Text>
+          </TouchableOpacity>
+        </View>
 
         <TextInput
           style={styles.input}
@@ -84,7 +103,7 @@ export default function AuthScreen() {
           disabled={isSubmitting}
           activeOpacity={0.9}
         >
-          <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.buttonGradient}>
+          <LinearGradient colors={['#1D4ED8', '#2563EB']} style={styles.buttonGradient}>
             {isSubmitting ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
@@ -112,7 +131,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
   },
   background: {
     position: 'absolute',
@@ -125,24 +144,51 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
   },
-  title: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#1E3A8A',
-    marginBottom: 8,
-    textAlign: 'center',
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 26,
+  },
+  logoImage: {
+    width: 220,
+    height: 78,
   },
   subtitle: {
     textAlign: 'center',
-    color: '#64748B',
-    marginBottom: 30,
+    color: '#475569',
+    marginTop: 8,
     lineHeight: 20,
+  },
+  roleSwitch: {
+    flexDirection: 'row',
+    backgroundColor: '#E2E8F0',
+    padding: 4,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  roleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  roleButtonActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  roleText: {
+    color: '#334155',
+    fontWeight: '600',
+  },
+  roleTextActive: {
+    color: '#0F172A',
   },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
@@ -170,7 +216,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   switchText: {
-    color: '#2563EB',
+    color: '#1D4ED8',
     fontWeight: '600',
   },
   message: {

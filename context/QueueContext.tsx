@@ -38,7 +38,7 @@ interface QueueContextType {
   leaveCurrentQueue: () => Promise<void>;
   callNext: (queueId: string) => Promise<Person | null>;
   removePerson: (queueId: string, personId: string) => Promise<void>;
-  endQueue: (queueId: string) => Promise<void>;
+  endQueue: (queueId: string) => Promise<{ success: boolean; message?: string }>;
   getQueueById: (id: string) => Queue | undefined;
 }
 
@@ -426,12 +426,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refreshData();
   };
 
-  const endQueue = async (queueId: string) => {
+  const endQueue = async (queueId: string): Promise<{ success: boolean; message?: string }> => {
     const { error: queueError } = await supabase.from('queues').update({ is_active: false }).eq('id', queueId);
 
     if (queueError) {
       setErrorMessage(queueError.message);
-      return;
+      return { success: false, message: queueError.message };
     }
 
     const { error: membersError } = await supabase
@@ -442,10 +442,11 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (membersError) {
       setErrorMessage(membersError.message);
-      return;
+      return { success: false, message: membersError.message };
     }
 
     await refreshData();
+    return { success: true };
   };
 
   const getQueueById = (id: string) => queues.find((queue) => queue.id === id);
