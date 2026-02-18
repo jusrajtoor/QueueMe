@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
   Switch,
-  Alert,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,52 +18,56 @@ import { useQueueContext } from '@/context/QueueContext';
 
 export default function CreateQueueScreen() {
   const { createQueue } = useQueueContext();
-  
+
   const [queueName, setQueueName] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [timePerPerson, setTimePerPerson] = useState('5');
   const [useLocation, setUseLocation] = useState(false);
-  
-  const handleCreateQueue = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateQueue = async () => {
     if (!queueName.trim()) {
       Alert.alert('Missing Information', 'Please enter a name for your queue.');
       return;
     }
-    
-    const queue = createQueue({
+
+    setIsSubmitting(true);
+
+    const queue = await createQueue({
       name: queueName.trim(),
       description: description.trim(),
       location: useLocation ? location.trim() : undefined,
-      timePerPerson: parseInt(timePerPerson) || 5,
+      timePerPerson: parseInt(timePerPerson, 10) || 5,
     });
-    
+
+    setIsSubmitting(false);
+
+    if (!queue) {
+      Alert.alert('Failed to Create Queue', 'Please try again.');
+      return;
+    }
+
     router.push('/(tabs)/manage');
   };
-  
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <LinearGradient
-        colors={['#EFF6FF', '#F9FAFB']}
-        style={styles.background}
-      />
-      
+      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color="#3B82F6" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Queue</Text>
         <View style={{ width: 24 }} />
       </View>
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -78,7 +82,7 @@ export default function CreateQueueScreen() {
             placeholderTextColor="#94A3B8"
             autoCapitalize="words"
           />
-          
+
           <Text style={styles.label}>Description (optional)</Text>
           <TextInput
             style={[styles.input, styles.multilineInput]}
@@ -89,7 +93,7 @@ export default function CreateQueueScreen() {
             multiline
             numberOfLines={3}
           />
-          
+
           <View style={styles.optionRow}>
             <View style={styles.iconContainer}>
               <Clock size={20} color="#3B82F6" />
@@ -104,7 +108,7 @@ export default function CreateQueueScreen() {
               />
             </View>
           </View>
-          
+
           <View style={styles.optionRow}>
             <View style={styles.iconContainer}>
               <MapPin size={20} color="#3B82F6" />
@@ -119,7 +123,7 @@ export default function CreateQueueScreen() {
               />
             </View>
           </View>
-          
+
           {useLocation && (
             <TextInput
               style={[styles.input, { marginTop: 10 }]}
@@ -129,21 +133,22 @@ export default function CreateQueueScreen() {
               placeholderTextColor="#94A3B8"
             />
           )}
-          
+
           <View style={styles.infoBox}>
             <Info size={18} color="#64748B" style={styles.infoIcon} />
             <Text style={styles.infoText}>
-              Your queue will be available via a QR code or unique code that others can use to join.
+              This queue will be stored in the backend and available across all devices.
             </Text>
           </View>
         </View>
       </ScrollView>
-      
+
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.createButton}
+          style={[styles.createButton, isSubmitting && { opacity: 0.6 }]}
           onPress={handleCreateQueue}
           activeOpacity={0.9}
+          disabled={isSubmitting}
         >
           <LinearGradient
             colors={['#3B82F6', '#2563EB']}
@@ -151,7 +156,7 @@ export default function CreateQueueScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.buttonText}>Create Queue</Text>
+            <Text style={styles.buttonText}>{isSubmitting ? 'Creating...' : 'Create Queue'}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -269,30 +274,24 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   infoIcon: {
-    marginRight: 12,
     marginTop: 2,
+    marginRight: 12,
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
     color: '#64748B',
     lineHeight: 20,
   },
   footer: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
   },
   createButton: {
     height: 56,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   buttonGradient: {
     flex: 1,
@@ -301,7 +300,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

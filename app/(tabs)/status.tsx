@@ -1,85 +1,60 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
   Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Users, Clock, MapPin, LogOut, Check } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring,
-  withSequence,
-  withDelay,
-  runOnJS
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring } from 'react-native-reanimated';
 
 export default function QueueStatusScreen() {
-  const { currentQueue, userPosition, userName, leaveQueue } = useQueueContext();
+  const { currentQueue, currentMember, userPosition, leaveCurrentQueue } = useQueueContext();
   const [isYourTurn, setIsYourTurn] = useState(false);
-  
-  // Animation values
+
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
-  
+
   useEffect(() => {
-    // Check if it's the user's turn (they're first in line)
     if (userPosition === 1 && !isYourTurn) {
       setIsYourTurn(true);
-      // Trigger animation
-      scale.value = withSequence(
-        withSpring(1.2, { damping: 2 }),
-        withDelay(200, withSpring(1))
-      );
-      
-      // In a real app, this would also trigger a notification
+      scale.value = withSequence(withSpring(1.2, { damping: 2 }), withDelay(200, withSpring(1)));
+    } else if (userPosition !== 1 && isYourTurn) {
+      setIsYourTurn(false);
     }
-  }, [userPosition, isYourTurn]);
-  
-  const animatedCardStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      opacity: opacity.value,
-    };
-  });
-  
+  }, [isYourTurn, scale, userPosition]);
+
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   const handleLeaveQueue = () => {
-    if (!currentQueue || !userName) return;
-    
-    Alert.alert(
-      'Leave Queue',
-      'Are you sure you want to leave the queue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Leave', 
-          style: 'destructive',
-          onPress: () => {
-            const personId = currentQueue.people.find(p => p.name === userName)?.id;
-            if (personId) {
-              leaveQueue(currentQueue.id, personId);
-              router.replace('/(tabs)/');
-            }
-          } 
+    if (!currentQueue || !currentMember) {
+      return;
+    }
+
+    Alert.alert('Leave Queue', 'Are you sure you want to leave the queue?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          await leaveCurrentQueue();
+          router.replace('/(tabs)');
         },
-      ]
-    );
+      },
+    ]);
   };
-  
-  if (!currentQueue || !userName) {
+
+  if (!currentQueue || !currentMember) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={['#EFF6FF', '#F9FAFB']}
-          style={styles.background}
-        />
-        
+        <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
         <View style={styles.emptyContainer}>
           <Users size={60} color="#94A3B8" />
           <Text style={styles.emptyTitle}>Not In Any Queue</Text>
@@ -104,80 +79,67 @@ export default function QueueStatusScreen() {
       </View>
     );
   }
-  
-  // Calculate estimated wait time
-  const waitTimeMinutes = (userPosition && userPosition > 0)
-    ? (userPosition - 1) * (currentQueue.timePerPerson || 5)
-    : 0;
-  
-  // Calculate time when it will be the user's turn
+
+  const waitTimeMinutes = userPosition && userPosition > 0 ? (userPosition - 1) * (currentQueue.timePerPerson || 5) : 0;
+
   const turnTime = new Date();
   turnTime.setMinutes(turnTime.getMinutes() + waitTimeMinutes);
   const turnTimeString = turnTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
+
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#EFF6FF', '#F9FAFB']}
-        style={styles.background}
-      />
-      
+      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Queue Status</Text>
       </View>
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.queueCard, animatedCardStyle]}>
           <Text style={styles.queueName}>{currentQueue.name}</Text>
-          
+
           {isYourTurn ? (
             <View style={styles.yourTurnContainer}>
               <View style={styles.yourTurnIcon}>
                 <Check size={30} color="#FFFFFF" />
               </View>
-              <Text style={styles.yourTurnText}>It's Your Turn!</Text>
-              <Text style={styles.yourTurnSubtext}>
-                Please proceed to the counter. The staff is ready to assist you.
-              </Text>
+              <Text style={styles.yourTurnText}>It&apos;s Your Turn!</Text>
+              <Text style={styles.yourTurnSubtext}>Please proceed to the counter. The staff is ready to assist you.</Text>
             </View>
           ) : (
             <View style={styles.positionContainer}>
               <Text style={styles.positionLabel}>Your Position</Text>
               <Text style={styles.positionNumber}>{userPosition}</Text>
               <Text style={styles.peopleAhead}>
-                {userPosition === 1 
+                {userPosition === 1
                   ? 'You are next!'
-                  : `${userPosition - 1} ${userPosition - 1 === 1 ? 'person' : 'people'} ahead of you`
-                }
+                  : `${(userPosition ?? 1) - 1} ${(userPosition ?? 1) - 1 === 1 ? 'person' : 'people'} ahead of you`}
               </Text>
             </View>
           )}
-          
+
           <View style={styles.infoContainer}>
             <View style={styles.infoRow}>
               <View style={styles.infoIcon}>
                 <Clock size={20} color="#3B82F6" />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>
-                  {isYourTurn ? 'Ready Now' : 'Estimated Wait Time'}
-                </Text>
+                <Text style={styles.infoLabel}>{isYourTurn ? 'Ready Now' : 'Estimated Wait Time'}</Text>
                 <Text style={styles.infoValue}>
-                  {isYourTurn 
-                    ? '0 minutes' 
+                  {isYourTurn
+                    ? '0 minutes'
                     : waitTimeMinutes > 0
                       ? `${waitTimeMinutes} minutes (around ${turnTimeString})`
-                      : 'Less than a minute'
-                  }
+                      : 'Less than a minute'}
                 </Text>
               </View>
             </View>
-            
-            {currentQueue.location && (
+
+            {currentQueue.location ? (
               <View style={styles.infoRow}>
                 <View style={styles.infoIcon}>
                   <MapPin size={20} color="#3B82F6" />
@@ -187,44 +149,41 @@ export default function QueueStatusScreen() {
                   <Text style={styles.infoValue}>{currentQueue.location}</Text>
                 </View>
               </View>
-            )}
+            ) : null}
           </View>
-          
-          <TouchableOpacity
-            style={styles.leaveButton}
-            onPress={handleLeaveQueue}
-          >
+
+          <TouchableOpacity style={styles.leaveButton} onPress={handleLeaveQueue}>
             <LogOut size={18} color="#EF4444" />
             <Text style={styles.leaveButtonText}>Leave Queue</Text>
           </TouchableOpacity>
         </Animated.View>
-        
+
         <View style={styles.queueInfoCard}>
           <Text style={styles.queueInfoTitle}>Queue Details</Text>
-          
+
           <View style={styles.queueDetailRow}>
             <Text style={styles.queueDetailLabel}>Total people in line</Text>
             <Text style={styles.queueDetailValue}>{currentQueue.people.length}</Text>
           </View>
-          
+
           <View style={styles.queueDetailRow}>
             <Text style={styles.queueDetailLabel}>Your name</Text>
-            <Text style={styles.queueDetailValue}>{userName}</Text>
+            <Text style={styles.queueDetailValue}>{currentMember.name}</Text>
           </View>
-          
+
           <View style={styles.queueDetailRow}>
             <Text style={styles.queueDetailLabel}>Joined at</Text>
             <Text style={styles.queueDetailValue}>
-              {new Date(currentQueue.people.find(p => p.name === userName)?.joinedAt || new Date()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(currentMember.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
-          
-          {currentQueue.description && (
+
+          {currentQueue.description ? (
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionTitle}>Description</Text>
               <Text style={styles.descriptionText}>{currentQueue.description}</Text>
             </View>
-          )}
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -281,11 +240,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  buttonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
   },
   scrollView: {
     flex: 1,
@@ -298,7 +262,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -306,156 +269,128 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   queueName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#1E293B',
     marginBottom: 16,
-    textAlign: 'center',
   },
   positionContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   positionLabel: {
-    fontSize: 14,
     color: '#64748B',
-    marginBottom: 4,
   },
   positionNumber: {
-    fontSize: 64,
-    fontWeight: '700',
-    color: '#3B82F6',
-    marginBottom: 8,
+    fontSize: 54,
+    fontWeight: '800',
+    color: '#2563EB',
   },
   peopleAhead: {
-    fontSize: 16,
-    color: '#64748B',
+    color: '#475569',
   },
   yourTurnContainer: {
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#ECFDF5',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
   },
   yourTurnIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#10B981',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    backgroundColor: '#10B981',
+    marginBottom: 10,
   },
   yourTurnText: {
+    fontWeight: '800',
     fontSize: 24,
-    fontWeight: '700',
-    color: '#10B981',
-    marginBottom: 8,
+    color: '#065F46',
   },
   yourTurnSubtext: {
-    fontSize: 14,
-    color: '#064E3B',
     textAlign: 'center',
-    lineHeight: 20,
+    color: '#065F46',
+    marginTop: 6,
   },
   infoContainer: {
-    marginBottom: 24,
+    marginTop: 4,
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 12,
   },
   infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
+    marginTop: 2,
   },
   infoContent: {
     flex: 1,
   },
   infoLabel: {
-    fontSize: 14,
     color: '#64748B',
   },
   infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#1E293B',
+    fontWeight: '600',
+    marginTop: 2,
   },
   leaveButton: {
+    marginTop: 18,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     backgroundColor: '#FEE2E2',
-    borderRadius: 12,
   },
   leaveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#EF4444',
-    marginLeft: 8,
+    color: '#B91C1C',
+    fontWeight: '700',
   },
   queueInfoCard: {
+    marginTop: 14,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   queueInfoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   queueDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    marginTop: 8,
   },
   queueDetailLabel: {
-    fontSize: 14,
     color: '#64748B',
   },
   queueDetailValue: {
-    fontSize: 14,
-    fontWeight: '600',
     color: '#1E293B',
+    fontWeight: '600',
   },
   descriptionContainer: {
-    marginTop: 16,
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 12,
   },
   descriptionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748B',
-    marginBottom: 8,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
   },
   descriptionText: {
-    fontSize: 14,
-    color: '#1E293B',
+    color: '#475569',
     lineHeight: 20,
-  },
-  buttonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

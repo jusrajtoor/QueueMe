@@ -1,12 +1,13 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ListPlus, UserPlus, LogOut } from 'lucide-react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { ListPlus, UserPlus } from 'lucide-react-native';
+import { useAuth } from '@/context/AuthContext';
 
 export default function HomeScreen() {
   useFrameworkReady();
+  const { user, signOut } = useAuth();
 
   const navigateToCreate = () => {
     router.push('/(tabs)/create');
@@ -16,25 +17,34 @@ export default function HomeScreen() {
     router.push('/(tabs)/join');
   };
 
+  const handleLogout = async () => {
+    const result = await signOut();
+
+    if (result.error) {
+      Alert.alert('Logout Failed', result.error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#EFF6FF', '#F9FAFB']}
-        style={styles.background}
-      />
-      
+      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
+      <View style={styles.topBar}>
+        <Text style={styles.userEmail}>{user?.email}</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <LogOut color="#1E3A8A" size={18} />
+          <Text style={styles.logoutText}>Log out</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.logoContainer}>
         <Text style={styles.logoText}>QueueMe</Text>
         <Text style={styles.tagline}>Skip the line, not the experience</Text>
       </View>
-      
+
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={navigateToCreate}
-          activeOpacity={0.9}
-        >
+        <TouchableOpacity style={styles.button} onPress={navigateToCreate} activeOpacity={0.9}>
           <LinearGradient
             colors={['#3B82F6', '#2563EB']}
             style={styles.buttonGradient}
@@ -48,12 +58,8 @@ export default function HomeScreen() {
             </View>
           </LinearGradient>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={navigateToJoin}
-          activeOpacity={0.9}
-        >
+
+        <TouchableOpacity style={styles.button} onPress={navigateToJoin} activeOpacity={0.9}>
           <LinearGradient
             colors={['#10B981', '#059669']}
             style={styles.buttonGradient}
@@ -68,9 +74,9 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.footer}>
-        <Text style={styles.footerText}>No registration required</Text>
+        <Text style={styles.footerText}>Your queues and membership sync across devices.</Text>
       </View>
     </View>
   );
@@ -88,9 +94,35 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
   },
+  topBar: {
+    marginTop: 56,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userEmail: {
+    color: '#475569',
+    fontSize: 13,
+    maxWidth: '65%',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  logoutText: {
+    color: '#1E3A8A',
+    fontWeight: '600',
+    fontSize: 13,
+  },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 60,
+    marginTop: 30,
     marginBottom: 40,
   },
   logoText: {
@@ -142,9 +174,11 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     marginBottom: 30,
+    paddingHorizontal: 20,
   },
   footerText: {
     color: '#64748B',
     fontSize: 14,
+    textAlign: 'center',
   },
 });

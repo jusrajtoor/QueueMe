@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
   Alert,
   FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,22 +13,20 @@ import { Share2, Copy, Circle as XCircle, ChevronRight, Bell, Users } from 'luci
 import { useQueueContext } from '@/context/QueueContext';
 
 export default function ManageQueueScreen() {
-  const { activeHostQueue, callNext, removePerson, endQueue } = useQueueContext();
+  const { activeHostQueue, callNext, removePerson, endQueue, isLoading } = useQueueContext();
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
-  
-  if (!activeHostQueue) {
+  const [isMutating, setIsMutating] = useState(false);
+
+  if (!activeHostQueue && !isLoading) {
     return (
       <View style={styles.container}>
-        <LinearGradient
-          colors={['#EFF6FF', '#F9FAFB']}
-          style={styles.background}
-        />
-        
+        <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
         <View style={styles.emptyContainer}>
           <Users size={60} color="#94A3B8" />
           <Text style={styles.emptyTitle}>No Active Queue</Text>
           <Text style={styles.emptyDescription}>
-            You don't have any active queues to manage. Create a new queue to get started.
+            You do not have any active queues to manage. Create a new queue to get started.
           </Text>
           <TouchableOpacity
             style={styles.createButton}
@@ -49,86 +46,91 @@ export default function ManageQueueScreen() {
       </View>
     );
   }
-  
-  const handleCallNext = () => {
-    const nextPerson = callNext(activeHostQueue.id);
+
+  if (!activeHostQueue) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyDescription}>Loading your queue...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const handleCallNext = async () => {
+    setIsMutating(true);
+    const nextPerson = await callNext(activeHostQueue.id);
+    setIsMutating(false);
+
     if (nextPerson) {
       setSelectedPerson(nextPerson.id);
-      // In a real app, this would send a notification to the user
-      Alert.alert('Next Customer', `${nextPerson.name} has been notified that it's their turn.`);
+      Alert.alert('Next Customer', `${nextPerson.name} has been marked as served.`);
     } else {
       Alert.alert('Queue Empty', 'There are no more people in the queue.');
     }
   };
-  
+
   const handleRemovePerson = (personId: string) => {
-    Alert.alert(
-      'Remove from Queue',
-      'Are you sure you want to remove this person from the queue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: () => {
-            removePerson(activeHostQueue.id, personId);
-            if (selectedPerson === personId) {
-              setSelectedPerson(null);
-            }
-          } 
+    Alert.alert('Remove from Queue', 'Are you sure you want to remove this person from the queue?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          setIsMutating(true);
+          await removePerson(activeHostQueue.id, personId);
+          setIsMutating(false);
+
+          if (selectedPerson === personId) {
+            setSelectedPerson(null);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
-  
+
   const handleEndQueue = () => {
-    Alert.alert(
-      'End Queue',
-      'Are you sure you want to end this queue? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'End Queue', 
-          style: 'destructive',
-          onPress: () => {
-            endQueue(activeHostQueue.id);
-            router.replace('/(tabs)/create');
-          } 
+    Alert.alert('End Queue', 'Are you sure you want to end this queue? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'End Queue',
+        style: 'destructive',
+        onPress: async () => {
+          setIsMutating(true);
+          await endQueue(activeHostQueue.id);
+          setIsMutating(false);
+          router.replace('/(tabs)/create');
         },
-      ]
-    );
+      },
+    ]);
   };
-  
+
   const handleShareQueueCode = () => {
-    // In a real app, this would use the Share API
     Alert.alert('Share Queue', `Your queue code is: ${activeHostQueue.id}`);
   };
-  
+
   const handleCopyQueueCode = () => {
-    // In a real app, this would copy to clipboard
     Alert.alert('Copied!', 'Queue code copied to clipboard');
   };
-  
+
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#EFF6FF', '#F9FAFB']}
-        style={styles.background}
-      />
-      
+      <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Manage Queue</Text>
       </View>
-      
+
       <View style={styles.queueInfoCard}>
         <Text style={styles.queueName}>{activeHostQueue.name}</Text>
-        
+
         <View style={styles.queueStatsRow}>
           <View style={styles.queueStat}>
             <Text style={styles.queueStatValue}>{activeHostQueue.people.length}</Text>
             <Text style={styles.queueStatLabel}>In Queue</Text>
           </View>
-          
+
           <View style={styles.queueStat}>
             <Text style={styles.queueStatValue}>
               {activeHostQueue.people.length * activeHostQueue.timePerPerson} min
@@ -136,34 +138,29 @@ export default function ManageQueueScreen() {
             <Text style={styles.queueStatLabel}>Est. Wait Time</Text>
           </View>
         </View>
-        
+
         <View style={styles.codeContainer}>
           <Text style={styles.codeLabel}>Queue Code</Text>
           <View style={styles.codeRow}>
             <Text style={styles.codeText}>{activeHostQueue.id}</Text>
             <View style={styles.codeActions}>
-              <TouchableOpacity 
-                style={styles.codeAction}
-                onPress={handleCopyQueueCode}
-              >
+              <TouchableOpacity style={styles.codeAction} onPress={handleCopyQueueCode}>
                 <Copy size={18} color="#3B82F6" />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.codeAction}
-                onPress={handleShareQueueCode}
-              >
+              <TouchableOpacity style={styles.codeAction} onPress={handleShareQueueCode}>
                 <Share2 size={18} color="#3B82F6" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </View>
-      
+
       <View style={styles.actionsContainer}>
-        <TouchableOpacity 
-          style={styles.callNextButton}
+        <TouchableOpacity
+          style={[styles.callNextButton, isMutating && { opacity: 0.6 }]}
           onPress={handleCallNext}
           activeOpacity={0.8}
+          disabled={isMutating}
         >
           <LinearGradient
             colors={['#10B981', '#059669']}
@@ -171,37 +168,29 @@ export default function ManageQueueScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.callNextText}>Call Next Person</Text>
+            <Text style={styles.callNextText}>{isMutating ? 'Working...' : 'Call Next Person'}</Text>
             <Bell size={18} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.endQueueButton}
-          onPress={handleEndQueue}
-        >
+
+        <TouchableOpacity style={styles.endQueueButton} onPress={handleEndQueue}>
           <Text style={styles.endQueueText}>End Queue</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.listContainer}>
         <Text style={styles.listTitle}>People in Queue</Text>
-        
+
         {activeHostQueue.people.length === 0 ? (
           <View style={styles.emptyList}>
-            <Text style={styles.emptyListText}>
-              No one has joined the queue yet.
-            </Text>
+            <Text style={styles.emptyListText}>No one has joined the queue yet.</Text>
           </View>
         ) : (
           <FlatList
             data={activeHostQueue.people}
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => (
-              <View style={[
-                styles.personItem,
-                selectedPerson === item.id && styles.selectedPersonItem
-              ]}>
+              <View style={[styles.personItem, selectedPerson === item.id && styles.selectedPersonItem]}>
                 <View style={styles.personInfo}>
                   <View style={styles.personPosition}>
                     <Text style={styles.positionText}>{index + 1}</Text>
@@ -213,17 +202,14 @@ export default function ManageQueueScreen() {
                     </Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.personActions}>
-                  {selectedPerson === item.id && index === 0 && (
+                  {selectedPerson === item.id && index === 0 ? (
                     <View style={styles.nextBadge}>
                       <Text style={styles.nextBadgeText}>Next</Text>
                     </View>
-                  )}
-                  <TouchableOpacity 
-                    style={styles.removeButton}
-                    onPress={() => handleRemovePerson(item.id)}
-                  >
+                  ) : null}
+                  <TouchableOpacity style={styles.removeButton} onPress={() => handleRemovePerson(item.id)}>
                     <XCircle size={22} color="#EF4444" />
                   </TouchableOpacity>
                   <ChevronRight size={20} color="#94A3B8" />
@@ -290,11 +276,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   queueInfoCard: {
     backgroundColor: '#FFFFFF',
@@ -319,32 +300,26 @@ const styles = StyleSheet.create({
   },
   queueStat: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    padding: 12,
-    marginRight: 8,
+    alignItems: 'center',
   },
   queueStatValue: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 4,
   },
   queueStatLabel: {
-    fontSize: 12,
     color: '#64748B',
+    marginTop: 4,
   },
   codeContainer: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    padding: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 12,
   },
   codeLabel: {
-    fontSize: 12,
-    fontWeight: '500',
     color: '#64748B',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   codeRow: {
     flexDirection: 'row',
@@ -352,82 +327,73 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   codeText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 1,
     color: '#1E293B',
   },
   codeActions: {
     flexDirection: 'row',
   },
   codeAction: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
+    backgroundColor: '#EFF6FF',
+    marginLeft: 8,
   },
   actionsContainer: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   callNextButton: {
-    flex: 1,
-    height: 48,
+    height: 50,
     borderRadius: 12,
     overflow: 'hidden',
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   buttonGradient: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
   callNextText: {
     color: '#FFFFFF',
+    fontWeight: '700',
     fontSize: 16,
-    fontWeight: '600',
-    marginRight: 8,
   },
   endQueueButton: {
-    height: 48,
-    paddingHorizontal: 16,
-    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
+    marginTop: 12,
   },
   endQueueText: {
     color: '#EF4444',
-    fontSize: 16,
     fontWeight: '600',
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingTop: 16,
   },
   listTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 12,
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   emptyList: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
   },
   emptyListText: {
-    fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center',
+    color: '#64748B',
   },
   personList: {
     flex: 1,
@@ -436,23 +402,20 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   personItem: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
   },
   selectedPersonItem: {
-    borderWidth: 2,
     borderColor: '#10B981',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#ECFDF5',
   },
   personInfo: {
     flexDirection: 'row',
@@ -463,28 +426,26 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   positionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3B82F6',
+    fontWeight: '700',
+    color: '#1E293B',
   },
   personDetails: {
     flex: 1,
   },
   personName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 2,
   },
   personMeta: {
-    fontSize: 12,
+    marginTop: 2,
     color: '#64748B',
+    fontSize: 12,
   },
   personActions: {
     flexDirection: 'row',
@@ -494,21 +455,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 12,
+    borderRadius: 10,
+    marginRight: 8,
   },
   nextBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   removeButton: {
-    padding: 6,
-    marginRight: 8,
+    padding: 4,
+    marginRight: 4,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });
