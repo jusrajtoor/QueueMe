@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, QrCode, Ticket } from 'lucide-react-native';
+import { ArrowLeft, Building2, MapPin, Search, Ticket } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -21,6 +21,8 @@ export default function JoinQueueScreen() {
   const { profile } = useAuth();
 
   const [queueCode, setQueueCode] = useState('');
+  const [searchCompany, setSearchCompany] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [step, setStep] = useState(1);
@@ -32,6 +34,30 @@ export default function JoinQueueScreen() {
       setDisplayName(profile.fullName);
     }
   }, [profile?.fullName, displayName]);
+
+  const activeQueues = useMemo(() => queues.filter((queue) => queue.isActive), [queues]);
+
+  const filteredQueues = useMemo(() => {
+    const companyQuery = searchCompany.trim().toLowerCase();
+    const locationQuery = searchLocation.trim().toLowerCase();
+
+    return activeQueues
+      .filter((queue) => {
+        const queueName = queue.name.toLowerCase();
+        const queueDescription = (queue.description ?? '').toLowerCase();
+        const queueLocation = (queue.location ?? '').toLowerCase();
+
+        const companyMatches =
+          !companyQuery || queueName.includes(companyQuery) || queueDescription.includes(companyQuery);
+        const locationMatches = !locationQuery || queueLocation.includes(locationQuery);
+
+        return companyMatches && locationMatches;
+      })
+      .sort((a, b) => a.people.length - b.people.length)
+      .slice(0, 20);
+  }, [activeQueues, searchCompany, searchLocation]);
+
+  const hasSearchFilters = searchCompany.trim().length > 0 || searchLocation.trim().length > 0;
 
   if (profile?.role === 'business') {
     return (
@@ -50,13 +76,13 @@ export default function JoinQueueScreen() {
     );
   }
 
-  const handleFindQueue = () => {
+  const handleFindQueueByCode = () => {
     if (!queueCode.trim()) {
       Alert.alert('Missing Information', 'Please enter a queue code.');
       return;
     }
 
-    const queue = queues.find((q) => q.id === queueCode.trim().toUpperCase() && q.isActive);
+    const queue = activeQueues.find((q) => q.id === queueCode.trim().toUpperCase());
 
     if (!queue) {
       Alert.alert('Queue Not Found', 'Please check the code and try again.');
@@ -64,6 +90,11 @@ export default function JoinQueueScreen() {
     }
 
     setSelectedQueue(queue.id);
+    setStep(2);
+  };
+
+  const handleSelectQueue = (queueId: string) => {
+    setSelectedQueue(queueId);
     setStep(2);
   };
 
@@ -100,13 +131,10 @@ export default function JoinQueueScreen() {
       <LinearGradient colors={['#E2E8F0', '#F8FAFC']} style={styles.background} />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => (step === 1 ? router.back() : setStep(1))}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => (step === 1 ? router.back() : setStep(1))}>
           <ArrowLeft size={22} color="#1D4ED8" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{step === 1 ? 'Join Queue' : 'Your Details'}</Text>
+        <Text style={styles.headerTitle}>{step === 1 ? 'Find Queue' : 'Your Details'}</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -117,10 +145,87 @@ export default function JoinQueueScreen() {
       >
         {step === 1 ? (
           <View style={styles.formContainer}>
+            <View style={styles.searchContainer}>
+              <View style={styles.searchHeader}>
+                <Search size={20} color="#1D4ED8" />
+                <Text style={styles.searchTitle}>Search by Company or Location</Text>
+              </View>
+
+              <View style={styles.searchInputRow}>
+                <Building2 size={18} color="#1D4ED8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Business or service name"
+                  value={searchCompany}
+                  onChangeText={setSearchCompany}
+                  placeholderTextColor="#94A3B8"
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View style={styles.searchInputRow}>
+                <MapPin size={18} color="#1D4ED8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Location (city, address, area)"
+                  value={searchLocation}
+                  onChangeText={setSearchLocation}
+                  placeholderTextColor="#94A3B8"
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            <Text style={styles.searchHelperText}>
+              {hasSearchFilters
+                ? `Showing ${filteredQueues.length} matching queue${filteredQueues.length === 1 ? '' : 's'}.`
+                : 'Showing active queues. Add filters to narrow results.'}
+            </Text>
+
+            {filteredQueues.length === 0 ? (
+              <View style={styles.emptySearchState}>
+                <Text style={styles.emptySearchText}>No active queues matched your search.</Text>
+              </View>
+            ) : (
+              <View style={styles.searchResultsContainer}>
+                {filteredQueues.map((queue) => {
+                  const estimatedWait = queue.people.length * queue.timePerPerson;
+
+                  return (
+                    <TouchableOpacity
+                      key={queue.id}
+                      style={styles.queueResultCard}
+                      onPress={() => handleSelectQueue(queue.id)}
+                      activeOpacity={0.9}
+                    >
+                      <View style={styles.queueResultHeader}>
+                        <Text style={styles.queueResultName}>{queue.name}</Text>
+                        <Text style={styles.queueResultCode}>{queue.id}</Text>
+                      </View>
+
+                      {queue.location ? (
+                        <View style={styles.queueResultLocationRow}>
+                          <MapPin size={14} color="#64748B" />
+                          <Text style={styles.queueResultLocation}>{queue.location}</Text>
+                        </View>
+                      ) : null}
+
+                      <View style={styles.queueResultStats}>
+                        <Text style={styles.queueResultMeta}>{queue.people.length} in line</Text>
+                        <Text style={styles.queueResultMeta}>
+                          Est. wait {estimatedWait > 0 ? `${estimatedWait} min` : 'Less than a min'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
             <View style={styles.codeInputContainer}>
               <View style={styles.codeInputHeader}>
                 <Ticket size={20} color="#1D4ED8" />
-                <Text style={styles.codeInputLabel}>Queue Code</Text>
+                <Text style={styles.codeInputLabel}>Have a Queue Code?</Text>
               </View>
               <TextInput
                 style={styles.codeInput}
@@ -133,14 +238,9 @@ export default function JoinQueueScreen() {
               />
             </View>
 
-            <TouchableOpacity style={styles.qrButton} disabled>
-              <View style={styles.qrButtonContent}>
-                <QrCode size={20} color="#1D4ED8" />
-                <Text style={styles.qrButtonText}>Scan QR (coming soon)</Text>
-              </View>
-            </TouchableOpacity>
-
-            <Text style={styles.infoText}>Use the code shared by the business to find your queue.</Text>
+            <Text style={styles.infoText}>
+              Tap a queue from search results, or use a direct code from the business.
+            </Text>
             {isLoading ? <Text style={styles.infoText}>Refreshing queue data...</Text> : null}
           </View>
         ) : (
@@ -150,6 +250,7 @@ export default function JoinQueueScreen() {
               {selectedQueueData?.description ? (
                 <Text style={styles.queueDescription}>{selectedQueueData.description}</Text>
               ) : null}
+              {selectedQueueData?.location ? <Text style={styles.queueLocation}>{selectedQueueData.location}</Text> : null}
               <View style={styles.queueDetailRow}>
                 <Text style={styles.queueDetailLabel}>People in line:</Text>
                 <Text style={styles.queueDetailValue}>{selectedQueueData?.people.length || 0}</Text>
@@ -189,7 +290,7 @@ export default function JoinQueueScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.actionButton, isSubmitting && { opacity: 0.6 }]}
-          onPress={step === 1 ? handleFindQueue : handleJoinQueue}
+          onPress={step === 1 ? handleFindQueueByCode : handleJoinQueue}
           activeOpacity={0.9}
           disabled={isSubmitting}
         >
@@ -198,7 +299,7 @@ export default function JoinQueueScreen() {
             style={styles.buttonGradient}
           >
             <Text style={styles.buttonText}>
-              {isSubmitting ? 'Joining...' : step === 1 ? 'Find Queue' : 'Join Queue'}
+              {isSubmitting ? 'Joining...' : step === 1 ? 'Find by Code' : 'Join Queue'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -232,12 +333,112 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 30 },
   formContainer: { marginTop: 8 },
+  searchContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D9E2EC',
+    borderRadius: 14,
+    padding: 14,
+  },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  searchTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginLeft: 10,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    marginLeft: 8,
+    color: '#1E293B',
+    fontSize: 15,
+  },
+  searchHelperText: {
+    color: '#475569',
+    marginTop: 10,
+    marginBottom: 10,
+    lineHeight: 20,
+  },
+  searchResultsContainer: {
+    marginBottom: 14,
+    gap: 10,
+  },
+  queueResultCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    borderRadius: 12,
+    padding: 12,
+  },
+  queueResultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  queueResultName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginRight: 8,
+  },
+  queueResultCode: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  queueResultLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  queueResultLocation: {
+    color: '#64748B',
+    marginLeft: 6,
+    flex: 1,
+  },
+  queueResultStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  queueResultMeta: {
+    color: '#334155',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  emptySearchState: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+  },
+  emptySearchText: {
+    color: '#64748B',
+  },
   codeInputContainer: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D9E2EC',
     borderRadius: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     overflow: 'hidden',
   },
   codeInputHeader: {
@@ -249,9 +450,6 @@ const styles = StyleSheet.create({
   },
   codeInputLabel: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginLeft: 10 },
   codeInput: { padding: 14, fontSize: 16, color: '#1E293B' },
-  qrButton: { backgroundColor: '#DBEAFE', borderRadius: 12, padding: 14, marginBottom: 14 },
-  qrButtonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  qrButtonText: { color: '#1D4ED8', fontWeight: '700', marginLeft: 8 },
   infoText: { color: '#475569', lineHeight: 20 },
   queueInfoCard: {
     backgroundColor: '#FFFFFF',
@@ -263,6 +461,7 @@ const styles = StyleSheet.create({
   },
   queueName: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
   queueDescription: { color: '#64748B', marginBottom: 8 },
+  queueLocation: { color: '#1E293B', marginBottom: 8, fontWeight: '600' },
   queueDetailRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   queueDetailLabel: { color: '#64748B' },
   queueDetailValue: { color: '#0F172A', fontWeight: '700' },

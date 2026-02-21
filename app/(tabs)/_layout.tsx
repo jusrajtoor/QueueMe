@@ -1,6 +1,6 @@
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
-import { ChartBar as BarChart4, Chrome as Home, User, Clock3 } from 'lucide-react-native';
+import { ChartBar as BarChart4, House, User, Clock3 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
@@ -44,7 +44,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
         }}
       />
 

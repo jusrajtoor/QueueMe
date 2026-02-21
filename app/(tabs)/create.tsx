@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Clock, MapPin, Info } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
 import { useAuth } from '@/context/AuthContext';
+import { searchLocationSuggestions } from '@/utils/locationSearch';
 
 export default function CreateQueueScreen() {
   const { createQueue } = useQueueContext();
@@ -24,9 +25,65 @@ export default function CreateQueueScreen() {
   const [queueName, setQueueName] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [locationSuggestions, setLocationSuggestions] = useState<{ id: string; label: string }[]>([]);
+  const [isSearchingLocations, setIsSearchingLocations] = useState(false);
+  const [locationSearchError, setLocationSearchError] = useState<string | null>(null);
   const [timePerPerson, setTimePerPerson] = useState('5');
   const [useLocation, setUseLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (useLocation) {
+      return;
+    }
+
+    setLocation('');
+    setSelectedLocationId(null);
+    setLocationSuggestions([]);
+    setLocationSearchError(null);
+    setIsSearchingLocations(false);
+  }, [useLocation]);
+
+  useEffect(() => {
+    if (!useLocation) {
+      return;
+    }
+
+    const query = location.trim();
+
+    if (query.length < 3 || selectedLocationId) {
+      setLocationSuggestions([]);
+      setLocationSearchError(null);
+      setIsSearchingLocations(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      setIsSearchingLocations(true);
+      setLocationSearchError(null);
+
+      try {
+        const suggestions = await searchLocationSuggestions(query, controller.signal);
+        setLocationSuggestions(suggestions.map((item) => ({ id: item.id, label: item.label })));
+      } catch (error) {
+        if ((error as { name?: string } | null)?.name === 'AbortError') {
+          return;
+        }
+
+        setLocationSearchError('Could not load real addresses right now.');
+        setLocationSuggestions([]);
+      } finally {
+        setIsSearchingLocations(false);
+      }
+    }, 320);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [location, selectedLocationId, useLocation]);
 
   if (profile?.role === 'customer') {
     return (
@@ -51,6 +108,16 @@ export default function CreateQueueScreen() {
       return;
     }
 
+    if (useLocation && !location.trim()) {
+      Alert.alert('Missing Information', 'Please add a queue location.');
+      return;
+    }
+
+    if (useLocation && !selectedLocationId) {
+      Alert.alert('Select a Real Address', 'Choose one of the suggested addresses so customers see a real location.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     const queue = await createQueue({
@@ -68,6 +135,18 @@ export default function CreateQueueScreen() {
     }
 
     router.push('/(tabs)/manage');
+  };
+
+  const handleLocationChange = (value: string) => {
+    setLocation(value);
+    setSelectedLocationId(null);
+  };
+
+  const handleSelectLocation = (suggestion: { id: string; label: string }) => {
+    setLocation(suggestion.label);
+    setSelectedLocationId(suggestion.id);
+    setLocationSuggestions([]);
+    setLocationSearchError(null);
   };
 
   return (
@@ -144,13 +223,37 @@ export default function CreateQueueScreen() {
           </View>
 
           {useLocation ? (
-            <TextInput
-              style={[styles.input, { marginTop: 10 }]}
-              placeholder="Enter location"
-              value={location}
-              onChangeText={setLocation}
-              placeholderTextColor="#94A3B8"
-            />
+            <View style={styles.locationContainer}>
+              <TextInput
+                style={[styles.input, styles.locationInput]}
+                placeholder="Search and choose a real address"
+                value={location}
+                onChangeText={handleLocationChange}
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={styles.locationHint}>
+                Start typing at least 3 characters and choose a suggested address.
+              </Text>
+
+              {isSearchingLocations ? <Text style={styles.locationStatus}>Finding addresses...</Text> : null}
+              {locationSearchError ? <Text style={styles.locationError}>{locationSearchError}</Text> : null}
+
+              {locationSuggestions.length > 0 ? (
+                <View style={styles.suggestionsContainer}>
+                  {locationSuggestions.map((suggestion) => (
+                    <TouchableOpacity
+                      key={suggestion.id}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSelectLocation(suggestion)}
+                    >
+                      <MapPin size={15} color="#475569" />
+                      <Text style={styles.suggestionText}>{suggestion.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+            </View>
           ) : null}
 
           <View style={styles.infoBox}>
@@ -211,6 +314,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1E293B',
     marginBottom: 14,
+  },
+  locationContainer: {
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  locationInput: {
+    marginBottom: 8,
+  },
+  locationHint: {
+    color: '#64748B',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  locationStatus: {
+    color: '#475569',
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  locationError: {
+    color: '#B91C1C',
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  suggestionsContainer: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 8,
+  },
+  suggestionText: {
+    flex: 1,
+    color: '#334155',
+    fontSize: 13,
   },
   multilineInput: { height: 100, textAlignVertical: 'top' },
   optionRow: {

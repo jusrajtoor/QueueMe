@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Users, Clock, MapPin, LogOut, Check } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring } from 'react-native-reanimated';
+import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 
 export default function QueueStatusScreen() {
   const { currentQueue, currentMember, userPosition, leaveCurrentQueue } = useQueueContext();
@@ -54,6 +55,11 @@ export default function QueueStatusScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <Text style={styles.headerTitle}>Queue Status</Text>
+          <ProfileMenuButton />
+        </View>
 
         <View style={styles.emptyContainer}>
           <Users size={60} color="#94A3B8" />
@@ -91,7 +97,9 @@ export default function QueueStatusScreen() {
       <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
 
       <View style={styles.header}>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Queue Status</Text>
+        <ProfileMenuButton />
       </View>
 
       <ScrollView
@@ -205,10 +213,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
+  },
+  headerSpacer: {
+    width: 42,
   },
   headerTitle: {
     fontSize: 18,

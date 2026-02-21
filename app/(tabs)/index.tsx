@@ -1,21 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Building2, CirclePlay, UserPlus } from 'lucide-react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useAuth } from '@/context/AuthContext';
-import { getDisplayName, getInitials } from '@/utils/profileUtils';
-import { ProfileMenu } from '@/components/ProfileMenu';
+import { getDisplayName } from '@/utils/profileUtils';
+import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 
 export default function HomeScreen() {
   useFrameworkReady();
 
-  const { user, profile, signOut } = useAuth();
-  const [menuVisible, setMenuVisible] = useState(false);
+  const { user, profile } = useAuth();
 
   const displayName = useMemo(() => getDisplayName(profile, user?.email), [profile, user?.email]);
-  const initials = useMemo(() => getInitials(displayName), [displayName]);
   const isBusiness = profile?.role === 'business';
 
   const handlePrimaryAction = () => {
@@ -24,16 +22,6 @@ export default function HomeScreen() {
 
   const handleSecondaryAction = () => {
     router.push(isBusiness ? '/(tabs)/manage' : '/(tabs)/status');
-  };
-
-  const handleLogout = async () => {
-    setMenuVisible(false);
-
-    const result = await signOut();
-
-    if (result.error) {
-      Alert.alert('Logout Failed', result.error);
-    }
   };
 
   return (
@@ -47,13 +35,7 @@ export default function HomeScreen() {
           <Text style={styles.greetingName}>{displayName}</Text>
         </View>
 
-        <TouchableOpacity style={styles.profileButton} onPress={() => setMenuVisible(true)}>
-          {profile?.avatarUrl ? (
-            <Image source={{ uri: profile.avatarUrl }} style={styles.profileImage} />
-          ) : (
-            <Text style={styles.profileInitials}>{initials}</Text>
-          )}
-        </TouchableOpacity>
+        <ProfileMenuButton size={44} />
       </View>
 
       <View style={styles.logoSection}>
@@ -84,18 +66,6 @@ export default function HomeScreen() {
           <Text style={styles.secondaryActionText}>{isBusiness ? 'Open Manage View' : 'Open Queue Status'}</Text>
         </TouchableOpacity>
       </View>
-
-      <ProfileMenu
-        visible={menuVisible}
-        profile={profile}
-        email={user?.email}
-        onClose={() => setMenuVisible(false)}
-        onOpenProfile={() => {
-          setMenuVisible(false);
-          router.push('/(tabs)/profile' as never);
-        }}
-        onLogout={handleLogout}
-      />
     </View>
   );
 }
@@ -128,24 +98,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginTop: 2,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1D4ED8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  profileInitials: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
   },
   logoSection: {
     marginTop: 22,

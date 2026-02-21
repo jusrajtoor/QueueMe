@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Share2, Copy, Circle as XCircle, ChevronRight, Bell, Users } from 'lucide-react-native';
 import { useQueueContext } from '@/context/QueueContext';
+import { ProfileMenuButton } from '@/components/ProfileMenuButton';
 
 export default function ManageQueueScreen() {
   const { activeHostQueue, callNext, removePerson, endQueue, isLoading } = useQueueContext();
@@ -22,6 +23,11 @@ export default function ManageQueueScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <Text style={styles.headerTitle}>Manage Queue</Text>
+          <ProfileMenuButton />
+        </View>
 
         <View style={styles.emptyContainer}>
           <Users size={60} color="#94A3B8" />
@@ -52,6 +58,11 @@ export default function ManageQueueScreen() {
     return (
       <View style={styles.container}>
         <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <Text style={styles.headerTitle}>Manage Queue</Text>
+          <ProfileMenuButton />
+        </View>
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyDescription}>Loading your queue...</Text>
         </View>
@@ -145,7 +156,9 @@ export default function ManageQueueScreen() {
       <LinearGradient colors={['#EFF6FF', '#F9FAFB']} style={styles.background} />
 
       <View style={styles.header}>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Manage Queue</Text>
+        <ProfileMenuButton />
       </View>
 
       <View style={styles.queueInfoCard}>
@@ -271,10 +284,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
+  },
+  headerSpacer: {
+    width: 42,
   },
   headerTitle: {
     fontSize: 18,
